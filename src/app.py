@@ -16,19 +16,38 @@ app = Flask(__name__,
            template_folder="../templates")
 CORS(app)
 
-# Load model with correct path
-model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models', 'model.pkl')
+# Multiple possible model paths for different environments
+model_paths = [
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models', 'model.pkl'),  # ../models/model.pkl
+    os.path.join(os.path.dirname(__file__), '..', 'models', 'model.pkl'),            # ../models/model.pkl (alternative)
+    os.path.join('models', 'model.pkl'),                                              # models/model.pkl (if running from root)
+    os.path.join('..', 'models', 'model.pkl'),                                       # ../models/model.pkl (relative)
+]
 
-try:
-    with open(model_path, 'rb') as f:
-        model = pickle.load(f)
-    print(f"✅ Model loaded successfully from {model_path}")
-except FileNotFoundError:
-    print(f"❌ Model file not found at {model_path}")
-    model = None
-except Exception as e:
-    print(f"❌ Error loading model: {e}")
-    model = None
+model = None
+model_loaded_path = None
+
+# Try loading model from different paths
+for model_path in model_paths:
+    try:
+        if os.path.exists(model_path):
+            with open(model_path, 'rb') as f:
+                model = pickle.load(f)
+            model_loaded_path = model_path
+            print(f"✅ Model loaded successfully from {model_path}")
+            break
+    except Exception as e:
+        print(f"❌ Failed to load model from {model_path}: {e}")
+
+if model is None:
+    print("❌ Model could not be loaded from any path")
+    print("Available files and directories:")
+    current_dir = os.path.dirname(__file__)
+    parent_dir = os.path.dirname(current_dir)
+    print(f"Current directory ({current_dir}): {os.listdir(current_dir) if os.path.exists(current_dir) else 'Not found'}")
+    print(f"Parent directory ({parent_dir}): {os.listdir(parent_dir) if os.path.exists(parent_dir) else 'Not found'}")
+    models_dir = os.path.join(parent_dir, 'models')
+    print(f"Models directory ({models_dir}): {os.listdir(models_dir) if os.path.exists(models_dir) else 'Not found'}")
 
 @app.route('/')
 def home():
@@ -36,12 +55,40 @@ def home():
 
 @app.route('/health')
 def health():
-    return jsonify({"status": "healthy", "model_loaded": model is not None})
+    return jsonify({
+        "status": "healthy", 
+        "model_loaded": model is not None,
+        "model_path": model_loaded_path if model else "No model loaded"
+    })
+
+@app.route('/debug')
+def debug():
+    """Debug endpoint to check file structure"""
+    current_dir = os.path.dirname(__file__)
+    parent_dir = os.path.dirname(current_dir)
+    
+    debug_info = {
+        "current_dir": current_dir,
+        "parent_dir": parent_dir,
+        "current_dir_files": os.listdir(current_dir) if os.path.exists(current_dir) else "Not found",
+        "parent_dir_files": os.listdir(parent_dir) if os.path.exists(parent_dir) else "Not found",
+        "model_paths_tried": model_paths,
+        "model_loaded": model is not None,
+        "model_loaded_from": model_loaded_path
+    }
+    
+    models_dir = os.path.join(parent_dir, 'models')
+    if os.path.exists(models_dir):
+        debug_info["models_dir_files"] = os.listdir(models_dir)
+    else:
+        debug_info["models_dir_files"] = "Models directory not found"
+    
+    return jsonify(debug_info)
 
 @app.route('/predict', methods=['POST'])
 def predict():
     if model is None:
-        return jsonify({"error": "Model not loaded"}), 500
+        return jsonify({"error": "Model not loaded", "details": "Please check server logs for model loading issues"}), 500
     
     try:
         data = request.json

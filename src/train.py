@@ -41,11 +41,13 @@ def train_model():
     X_train_bal, y_train_bal = sm.fit_resample(X_train, y_train)
     print(f"✅ SMOTE applied: {X_train_bal.shape[0]} balanced samples")
 
-    # --- Train Random Forest ---
-    print("🚀 Training Random Forest model...")
+    # --- Train Smaller Random Forest (for deployment) ---
+    print("🚀 Training optimized Random Forest model...")
     model = RandomForestClassifier(
-        n_estimators=150, 
-        max_depth=10, 
+        n_estimators=50,     # Reduced from 150
+        max_depth=8,         # Reduced from 10
+        min_samples_split=10,
+        min_samples_leaf=5,
         random_state=42,
         class_weight='balanced'
     )
@@ -70,7 +72,17 @@ def train_model():
     model_path = os.path.join(models_dir, "model.pkl")
     with open(model_path, "wb") as f:
         pickle.dump(model, f)
+    
+    # Check file size
+    file_size = os.path.getsize(model_path)
+    file_size_mb = file_size / (1024 * 1024)
     print(f"✅ Model saved to {model_path}")
+    print(f"📁 Model file size: {file_size_mb:.2f} MB")
+    
+    if file_size_mb > 100:
+        print("⚠️ WARNING: Model file is over 100MB - GitHub may reject it")
+    else:
+        print("✅ Model file size is acceptable for GitHub")
 
     # --- Plot feature importance ---
     feat_imp = pd.Series(model.feature_importances_, index=X.columns).sort_values(ascending=False)[:15]
