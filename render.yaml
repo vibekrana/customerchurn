@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: churn-predictor
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT
+    plan: free
+    healthCheckPath: /health

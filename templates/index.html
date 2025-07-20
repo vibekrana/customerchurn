@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Churn Predictor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .form-container {
+            padding: 40px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+        
+        .predict-btn {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .predict-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+        
+        .result.churn {
+            background: #ffe6e6;
+            border: 2px solid #ff4444;
+            color: #cc0000;
+        }
+        
+        .result.no-churn {
+            background: #e6ffe6;
+            border: 2px solid #44ff44;
+            color: #00cc00;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2196F3;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin: 30px 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔮 Customer Churn Predictor</h1>
+            <p>Predict customer churn probability using machine learning</p>
+        </div>
+        
+        <div class="form-container">
+            <form id="churnForm">
+                <div class="section-title">👤 Customer Demographics</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="gender">Gender:</label>
+                        <select id="gender" name="gender" required>
+                            <option value="">Select Gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="SeniorCitizen">Senior Citizen:</label>
+                        <select id="SeniorCitizen" name="SeniorCitizen" required>
+                            <option value="">Select</option>
+                            <option value="0">No</option>
+                            <option value="1">Yes</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="Partner">Partner:</label>
+                        <select id="Partner" name="Partner" required>
+                            <option value="">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="Dependents">Dependents:</label>
+                        <select id="Dependents" name="Dependents" required>
+                            <option value="">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="section-title">📱 Service Information</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="tenure">Tenure (months):</label>
+                        <input type="number" id="tenure" name="tenure" min="0" max="100" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="PhoneService">Phone Service:</label>
+                        <select id="PhoneService" name="PhoneService" required>
+                            <option value="">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="MultipleLines">Multiple Lines:</label>
+                        <select id="MultipleLines" name="MultipleLines" required>
+                            <option value="">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                            <option value="No phone service">No phone service</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="InternetService">Internet Service:</label>
+                        <select id="InternetService" name="InternetService" required>
+                            <option value="">Select</option>
+                            <option value="DSL">DSL</option>
+                            <option value="Fiber optic">Fiber optic</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="section-title">🔐 Add-on Services</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="OnlineSecurity">Online Security:</label>
+                        <select id="OnlineSecurity" name="OnlineSecurity" required>
+                            <option value="">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                            <option value="No internet service">No internet service</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="OnlineBackup">Online Backup:</label>
+                        <select id="OnlineBackup" name="OnlineBackup" required>
+                            <option value="">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                            <option value="No internet service">No internet service</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="DeviceProtection">Device Protection:</label>
+                        <select id="DeviceProtection" name="DeviceProtection" required>
+                            <option value="">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                            <option value="No internet service">No internet service</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="TechSupport">Tech Support:</label>
+                        <select id="TechSupport" name="TechSupport" required>
+                            <option value="">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                            <option value="No internet service">No internet service</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="StreamingTV">Streaming TV:</label>
+                        <select id="StreamingTV" name="StreamingTV" required>
+                            <option value="">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                            <option value="No internet service">No internet service</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="StreamingMovies">Streaming Movies:</label>
+                        <select id="StreamingMovies" name="StreamingMovies" required>
+                            <option value="">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                            <option value="No internet service">No internet service</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="section-title">💰 Billing Information</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="Contract">Contract:</label>
+                        <select id="Contract" name="Contract" required>
+                            <option value="">Select</option>
+                            <option value="Month-to-month">Month-to-month</option>
+                            <option value="One year">One year</option>
+                            <option value="Two year">Two year</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="PaperlessBilling">Paperless Billing:</label>
+                        <select id="PaperlessBilling" name="PaperlessBilling" required>
+                            <option value="">Select</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="PaymentMethod">Payment Method:</label>
+                        <select id="PaymentMethod" name="PaymentMethod" required>
+                            <option value="">Select</option>
+                            <option value="Electronic check">Electronic check</option>
+                            <option value="Mailed check">Mailed check</option>
+                            <option value="Bank transfer (automatic)">Bank transfer (automatic)</option>
+                            <option value="Credit card (automatic)">Credit card (automatic)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="MonthlyCharges">Monthly Charges ($):</label>
+                        <input type="number" id="MonthlyCharges" name="MonthlyCharges" step="0.01" min="0" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="TotalCharges">Total Charges ($):</label>
+                        <input type="number" id="TotalCharges" name="TotalCharges" step="0.01" min="0" required>
+                    </div>
+                </div>
+                
+                <button type="submit" class="predict-btn">🔮 Predict Churn</button>
+            </form>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing customer data...</p>
+            </div>
+            
+            <div class="result" id="result">
+                <h3 id="resultTitle"></h3>
+                <p id="resultText"></p>
+                <p><strong>Confidence: <span id="confidence"></span>%</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('churnForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {};
+            
+            // Convert form data to object
+            for (let [key, value] of formData.entries()) {
+                if (key === 'SeniorCitizen' || key === 'tenure' || key === 'MonthlyCharges' || key === 'TotalCharges') {
+                    data[key] = parseFloat(value);
+                } else {
+                    data[key] = value;
+                }
+            }
+            
+            // Add customerID for processing
+            data['customerID'] = 'TEMP-001';
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                
+                if (response.ok) {
+                    const resultDiv = document.getElementById('result');
+                    const isChurn = result.prediction === 1;
+                    
+                    resultDiv.className = isChurn ? 'result churn' : 'result no-churn';
+                    
+                    document.getElementById('resultTitle').textContent = 
+                        isChurn ? '⚠️ High Churn Risk' : '✅ Low Churn Risk';
+                    
+                    document.getElementById('resultText').textContent = 
+                        isChurn ? 'This customer is likely to churn.' : 'This customer is likely to stay.';
+                    
+                    document.getElementById('confidence').textContent = 
+                        (result.confidence * 100).toFixed(1);
+                    
+                    resultDiv.style.display = 'block';
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error occurred'));
+                }
+                
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                alert('Error: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
